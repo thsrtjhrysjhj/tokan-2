@@ -2,41 +2,19 @@
 # 🟢 EASY CUSTOMIZATION BLOCK (अपने 'Science' चैनल के लिए इसे बदलें) 🟢
 # =======================================================================
 
-# 1. 🏷️ TOP CENTER BANNER 
-TOP_CENTER_TITLE = "General Science Quiz" # या "विज्ञान प्रश्नोत्तरी" भी लिख सकते हैं
-
-# 2. 🎵 BACKGROUND MUSIC
-BGM_FILE = "./bgm.mp3" # टिप: साइंस के लिए थोड़ा Sci-fi या सस्पेंस वाला BGM अच्छा लगेगा
+TOP_CENTER_TITLE = "General Science Quiz" 
+BGM_FILE = "./bgm.mp3" 
 BGM_VOLUME = 0.35  
 
-# 3. 🗣️ VOICES & SPEED (वापस हिंदी सेट कर दिया है)
 VOICE_QUESTION = "hi-IN-MadhurNeural" 
 VOICE_ANSWER = "hi-IN-SwaraNeural"    
 VOICE_SPEED = "+0%"                   
 
-# 4. ⏳ TIMER
 TIMER_SECONDS = 5.0  
 
-# 5. 👻 WATERMARK SETTINGS
-CHANNEL_WATERMARK = "Your Channel Name" # ⚠️ यहाँ अपने नए साइंस चैनल का नाम लिखें (जैसे: Science Guru)
-
-THUMB_TEMPLATE = "./thumb_template.jpg" # टिप: थंबनेल में DNA, अंतरिक्ष, या माइक्रोस्कोप की फोटो लगा सकते हैं
+CHANNEL_WATERMARK = "Your Channel Name" 
+THUMB_TEMPLATE = "./thumb_template.jpg" 
 HINDI_FONT = "./NirmalaB.ttf" 
-
-# 6. 📝 YOUTUBE SEO (Random Titles & Tags for Science)
-YT_TITLES = [
-    "Top Science GK Questions in Hindi 🚀 | विज्ञान के महत्वपूर्ण प्रश्न",
-    "General Science Quiz 🧬 | Physics, Chemistry, Biology GK",
-    "Science GK For SSC/Railway 🤯 | बार-बार पूछे जाने वाले विज्ञान के सवाल"
-]
-
-YT_DESC_ADDON = "इस वीडियो में General Science (भौतिकी, रसायन और जीव विज्ञान) के सबसे महत्वपूर्ण सवाल दिए गए हैं। Railway (RRB), SSC, Police और अन्य सभी प्रतियोगी परीक्षाओं के लिए यह वीडियो बहुत ही फायदेमंद है!"
-
-YT_TAGS_POOL = [
-    ["science gk", "general science", "vigyan ke prashn", "science quiz in hindi", "science mcq"],
-    ["biology gk", "physics gk in hindi", "chemistry gk", "railway science", "ssc science gk"],
-    ["science questions and answers", "general knowledge science", "top science gk", "science test", "education"]
-]
 
 # =======================================================================
 # 🛑 STOP! DO NOT EDIT BELOW THIS LINE 🛑
@@ -46,6 +24,7 @@ import os, random, time, json, asyncio, sys, textwrap, re
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 from gtts import gTTS
+import google.generativeai as genai 
 
 try: resample_filter = Image.Resampling.LANCZOS
 except AttributeError: resample_filter = Image.ANTIALIAS
@@ -61,7 +40,6 @@ from google.auth.transport.requests import Request
 
 OUTPUT_FOLDER = "./output"
 TEMP_FOLDER = "./temp"
-JSON_FILE_PATH = "./questions.json"
 TOKENS_FOLDER = "./tokens"  
 BG_FOLDER = "./bgs" 
 THUMBNAIL_FILE = "./output/thumbnail.jpg"
@@ -69,6 +47,62 @@ THUMBNAIL_FILE = "./output/thumbnail.jpg"
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 os.makedirs(TEMP_FOLDER, exist_ok=True)
 os.makedirs(BG_FOLDER, exist_ok=True)
+
+# ---------------------------------------------------------
+# 🤖 GEMINI AI FUNCTION (SEO + QUESTIONS)
+# ---------------------------------------------------------
+def generate_content_with_gemini():
+    print("🧠 Gemini AI से वायरल SEO और नए सवाल जेनरेट किये जा रहे हैं...")
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        print("❌ Error: GEMINI_API_KEY नहीं मिली!")
+        sys.exit(1)
+        
+    genai.configure(api_key=api_key)
+    
+    prompt = """
+    You are an expert YouTube SEO specialist and a Science Quiz master.
+    Generate EXACTLY 25 highly unique and important General Science (Physics, Chemistry, Biology) quiz questions in Hindi.
+    ALSO, generate highly viral, clickbaity, and SEO-optimized YouTube metadata (Title, Description, Tags) in Hindi/Hinglish based on these specific questions.
+
+    Return ONLY a valid JSON object. Do not write any other text, explanations, or markdown formatting outside the JSON.
+    The JSON structure MUST look exactly like this:
+    {
+        "seo": {
+            "title": "Top Science GK Questions in Hindi 🚀 | Railway/SSC Science Quiz",
+            "description": "Viral description here explaining what is in the video...",
+            "tags": ["science gk", "general science", "vigyan ke prashn", "railway science", "ssc gk", "biology mcq"]
+        },
+        "questions": [
+            {
+                "question": "लोहे में जंग लगने का मुख्य कारण क्या है?",
+                "opt_a": "A) हाइड्रोजन",
+                "opt_b": "B) ऑक्सीजन और नमी",
+                "opt_c": "C) नाइट्रोजन",
+                "correct_key": "B"
+            }
+        ]
+    }
+    """
+    try:
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content(prompt)
+        text = response.text.strip()
+        
+        # Clean markdown if AI includes it
+        if text.startswith("```json"): text = text[7:]
+        if text.startswith("```"): text = text[3:]
+        if text.endswith("```"): text = text[:-3]
+            
+        content = json.loads(text.strip())
+        print("✅ Gemini ने वायरल SEO और शानदार सवाल तैयार कर दिए हैं!")
+        return content
+    except Exception as e:
+        print(f"❌ Gemini AI Error: {e}")
+        print("Raw Response Output:", response.text if 'response' in locals() else "None")
+        sys.exit(1)
+
+# ---------------------------------------------------------
 
 def create_top_banner(text, filename):
     try: font = ImageFont.truetype(HINDI_FONT, 50)
@@ -157,14 +191,17 @@ def make_tick_sfx(duration=TIMER_SECONDS):
         return np.where(t_mod < 0.1, click, 0)
     return AudioClip(lambda t: np.vstack([sound_wave(t), sound_wave(t)]).T, duration=duration, fps=44100).volumex(1.5)
 
-async def prepare_questions_by_time():
-    target_seconds = random.randint(13*60, 14*60) # 13 to 14 mins
-    print(f"🎯 Target Time: {target_seconds // 60} min {target_seconds % 60} sec")
+async def prepare_content():
+    # ⏱️ 13 से 14 मिनट का फिक्स लॉजिक
+    target_seconds = random.randint(13*60, (14*60) - 10) 
+    print(f"🎯 Target Time Set: {target_seconds // 60} min {target_seconds % 60} sec")
 
-    with open(JSON_FILE_PATH, 'r', encoding='utf-8') as f: all_q = json.load(f)
+    ai_data = generate_content_with_gemini()
+    all_q = ai_data.get("questions", [])
+    seo_data = ai_data.get("seo", {})
 
     used_quizzes = []
-    current_time = 3.0 
+    current_time = 3.0 # Intro duration
 
     for i, quiz in enumerate(all_q):
         text_a = quiz['opt_a'].replace("A)", "").replace("A.", "").strip()
@@ -187,8 +224,8 @@ async def prepare_questions_by_time():
         chunk_dur = q_clip.duration + 0.5 + TIMER_SECONDS + a_clip.duration + 1.5
         q_clip.close(); a_clip.close()
 
-        if current_time + chunk_dur > target_seconds and len(used_quizzes) >= 15:
-            print(f"✅ Target time reached! Total selected questions: {len(used_quizzes)}")
+        if current_time + chunk_dur > target_seconds:
+            print(f"✅ Maximum Time Limit Reached! Total selected questions: {len(used_quizzes)}")
             break
 
         quiz['q_audio'] = q_path
@@ -196,13 +233,12 @@ async def prepare_questions_by_time():
         used_quizzes.append(quiz)
         current_time += chunk_dur
 
-    last_q = used_quizzes[-1]
-    suspense_path = await generate_voice("इसका जवाब आप कमेंट्स में बताइए!", f"a_last.mp3", "female")
-    last_q['a_audio'] = suspense_path
-
-    remaining = all_q[len(used_quizzes):]
-    with open(JSON_FILE_PATH, 'w', encoding='utf-8') as f: json.dump(remaining, f, ensure_ascii=False, indent=4)
-    return used_quizzes
+    if used_quizzes:
+        last_q = used_quizzes[-1]
+        suspense_path = await generate_voice("इसका जवाब आप कमेंट्स में बताइए!", f"a_last.mp3", "female")
+        last_q['a_audio'] = suspense_path
+    
+    return used_quizzes, seo_data
 
 def create_thumbnail_intro(total_q):
     print(f"🎨 Template से Thumbnail Intro बना रहा है ({total_q} Questions)...")
@@ -329,14 +365,24 @@ def merge_videos_and_add_bgm(chunk_files):
         if os.path.exists(merged_no_bgm): os.rename(merged_no_bgm, final_output)
     return final_output
 
-def upload_to_youtube(video_file, total_q):
+def upload_to_youtube(video_file, total_q, seo_data):
     print("🌐 YouTube पर अपलोड हो रहा है...")
     token_files = sorted([os.path.join(TOKENS_FOLDER, f) for f in os.listdir(TOKENS_FOLDER) if f.endswith('.json')])
     
-    yt_title = f"{total_q} {random.choice(YT_TITLES)}"
-    yt_desc = f"{yt_title}\n\n{YT_DESC_ADDON}\n\nआखिरी सवाल का जवाब कमेंट में ज़रूर बताएं! 👇\n\n#quiz #education"
-    yt_tags = random.choice(YT_TAGS_POOL)
+    # AI द्वारा दिए गए SEO डेटा का इस्तेमाल
+    yt_title = seo_data.get("title", f"Top {total_q} Science GK Questions in Hindi 🚀")
     
+    # डिस्क्रिप्शन में ऑटोमैटिकली सस्पेंस लाइन जोड़ दी
+    ai_desc = seo_data.get("description", "इस वीडियो में General Science के सबसे महत्वपूर्ण सवाल दिए गए हैं।")
+    yt_desc = f"{yt_title}\n\n{ai_desc}\n\nआखिरी सवाल का जवाब कमेंट में ज़रूर बताएं! 👇\n\n#quiz #education #sciencegk"
+    
+    yt_tags = seo_data.get("tags", ["science gk", "general science", "quiz in hindi", "education"])
+    # Tags limit fix (YouTube API maximum takes ~500 chars total for tags)
+    yt_tags = yt_tags[:15] 
+    
+    print(f"📌 Upload Title: {yt_title}")
+    print(f"📌 Upload Tags: {yt_tags}")
+
     request_body = {
         "snippet": {"title": yt_title, "description": yt_desc, "tags": yt_tags, "categoryId": "27"},
         "status": {"privacyStatus": "public", "selfDeclaredMadeForKids": False}
@@ -365,7 +411,12 @@ async def main():
     print(f"🤖 Anti-Bot: वीडियो बनाने से पहले {wait_time // 60} मिनट इंतज़ार कर रहा है...")
     time.sleep(wait_time) 
     
-    quizzes = await prepare_questions_by_time()
+    quizzes, seo_data = await prepare_content()
+    
+    if not quizzes:
+        print("❌ कोई सवाल जेनरेट नहीं हुआ, प्रोसेस बंद की जा रही है।")
+        return
+
     total_q = len(quizzes)
     
     bg_files = [f for f in os.listdir(BG_FOLDER) if f.endswith(('.png', '.jpg', '.jpeg'))]
@@ -379,7 +430,7 @@ async def main():
         chunk_files.append(chunk_path)
         
     final_video = merge_videos_and_add_bgm(chunk_files)
-    upload_to_youtube(final_video, total_q)
+    upload_to_youtube(final_video, total_q, seo_data)
 
 if __name__ == "__main__":
     asyncio.run(main())
