@@ -52,10 +52,10 @@ os.makedirs(BG_FOLDER, exist_ok=True)
 # 🤖 GEMINI AI FUNCTION (SEO + QUESTIONS)
 # ---------------------------------------------------------
 def generate_content_with_gemini():
-    print("🧠 Gemini AI से वायरल SEO और नए सवाल जेनरेट किये जा रहे हैं...")
+    print("🧠 Gemini AI (gemini-3.6-flash) से वायरल SEO और नए सवाल जेनरेट किये जा रहे हैं...", flush=True)
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
-        print("❌ Error: GEMINI_API_KEY नहीं मिली!")
+        print("❌ Error: GEMINI_API_KEY नहीं मिली!", flush=True)
         sys.exit(1)
         
     genai.configure(api_key=api_key)
@@ -89,20 +89,17 @@ def generate_content_with_gemini():
         response = model.generate_content(prompt)
         text = response.text.strip()
         
-        # Clean markdown if AI includes it
         if text.startswith("```json"): text = text[7:]
         if text.startswith("```"): text = text[3:]
         if text.endswith("```"): text = text[:-3]
             
         content = json.loads(text.strip())
-        print("✅ Gemini ने वायरल SEO और शानदार सवाल तैयार कर दिए हैं!")
+        print("✅ Gemini ने वायरल SEO और शानदार सवाल तैयार कर दिए हैं!", flush=True)
         return content
     except Exception as e:
-        print(f"❌ Gemini AI Error: {e}")
-        print("Raw Response Output:", response.text if 'response' in locals() else "None")
+        print(f"❌ Gemini AI Error: {e}", flush=True)
+        print("Raw Response Output:", response.text if 'response' in locals() else "None", flush=True)
         sys.exit(1)
-
-# ---------------------------------------------------------
 
 def create_top_banner(text, filename):
     try: font = ImageFont.truetype(HINDI_FONT, 50)
@@ -177,9 +174,11 @@ async def generate_voice(text, filename, voice_type="male"):
     filepath = os.path.join(TEMP_FOLDER, filename)
     voice_name = VOICE_QUESTION if voice_type == "male" else VOICE_ANSWER
     try:
+        # ⚠️ Yahan timeout lagaya hai (15 second), agar atka toh gTTS par chala jayega
         communicate = edge_tts.Communicate(text, voice_name, rate=VOICE_SPEED, volume="+50%")
-        await communicate.save(filepath)
-    except:
+        await asyncio.wait_for(communicate.save(filepath), timeout=15.0)
+    except Exception as e:
+        print(f"⚠️ Voice Timeout/Error, Switching to gTTS... ({filename})", flush=True)
         tts = gTTS(text=text, lang='hi')
         tts.save(filepath)
     return filepath
@@ -192,18 +191,18 @@ def make_tick_sfx(duration=TIMER_SECONDS):
     return AudioClip(lambda t: np.vstack([sound_wave(t), sound_wave(t)]).T, duration=duration, fps=44100).volumex(1.5)
 
 async def prepare_content():
-    # ⏱️ 13 से 14 मिनट का फिक्स लॉजिक
     target_seconds = random.randint(13*60, (14*60) - 10) 
-    print(f"🎯 Target Time Set: {target_seconds // 60} min {target_seconds % 60} sec")
+    print(f"🎯 Target Time Set: {target_seconds // 60} min {target_seconds % 60} sec", flush=True)
 
     ai_data = generate_content_with_gemini()
     all_q = ai_data.get("questions", [])
     seo_data = ai_data.get("seo", {})
 
     used_quizzes = []
-    current_time = 3.0 # Intro duration
+    current_time = 3.0 
 
     for i, quiz in enumerate(all_q):
+        print(f"🎙️ सवाल {i+1} की ऑडियो बन रही है...", flush=True)
         text_a = quiz['opt_a'].replace("A)", "").replace("A.", "").strip()
         text_b = quiz['opt_b'].replace("B)", "").replace("B.", "").strip()
         text_c = quiz['opt_c'].replace("C)", "").replace("C.", "").strip()
@@ -225,7 +224,7 @@ async def prepare_content():
         q_clip.close(); a_clip.close()
 
         if current_time + chunk_dur > target_seconds:
-            print(f"✅ Maximum Time Limit Reached! Total selected questions: {len(used_quizzes)}")
+            print(f"✅ Maximum Time Limit Reached! Total selected questions: {len(used_quizzes)}", flush=True)
             break
 
         quiz['q_audio'] = q_path
@@ -241,7 +240,7 @@ async def prepare_content():
     return used_quizzes, seo_data
 
 def create_thumbnail_intro(total_q):
-    print(f"🎨 Template से Thumbnail Intro बना रहा है ({total_q} Questions)...")
+    print(f"🎨 Template से Thumbnail Intro बना रहा है ({total_q} Questions)...", flush=True)
     if os.path.exists(THUMB_TEMPLATE):
         img = Image.open(THUMB_TEMPLATE).convert('RGB')
         img = img.resize((1920, 1080))
@@ -266,7 +265,7 @@ def create_thumbnail_intro(total_q):
     return intro_path
 
 async def make_video_chunk(quiz, index, total_q, bg_image_path):
-    print(f"\n🎬 रेंडर: सवाल {index}/{total_q}")
+    print(f"🎬 रेंडर: सवाल {index}/{total_q}", flush=True)
     
     text_a = "A) " + quiz['opt_a'].replace("A)", "").replace("A.", "").strip()
     text_b = "B) " + quiz['opt_b'].replace("B)", "").replace("B.", "").strip()
@@ -347,7 +346,7 @@ async def make_video_chunk(quiz, index, total_q, bg_image_path):
     return out_path
 
 def merge_videos_and_add_bgm(chunk_files):
-    print(f"🔄 वीडियो जोड़े जा रहे हैं...")
+    print(f"🔄 वीडियो जोड़े जा रहे हैं...", flush=True)
     concat_txt = os.path.abspath(os.path.join(TEMP_FOLDER, "files.txt"))
     with open(concat_txt, "w") as f:
         for chunk in chunk_files: f.write(f"file '{os.path.abspath(chunk)}'\n")
@@ -366,22 +365,18 @@ def merge_videos_and_add_bgm(chunk_files):
     return final_output
 
 def upload_to_youtube(video_file, total_q, seo_data):
-    print("🌐 YouTube पर अपलोड हो रहा है...")
+    print("🌐 YouTube पर अपलोड हो रहा है...", flush=True)
     token_files = sorted([os.path.join(TOKENS_FOLDER, f) for f in os.listdir(TOKENS_FOLDER) if f.endswith('.json')])
     
-    # AI द्वारा दिए गए SEO डेटा का इस्तेमाल
     yt_title = seo_data.get("title", f"Top {total_q} Science GK Questions in Hindi 🚀")
-    
-    # डिस्क्रिप्शन में ऑटोमैटिकली सस्पेंस लाइन जोड़ दी
     ai_desc = seo_data.get("description", "इस वीडियो में General Science के सबसे महत्वपूर्ण सवाल दिए गए हैं।")
     yt_desc = f"{yt_title}\n\n{ai_desc}\n\nआखिरी सवाल का जवाब कमेंट में ज़रूर बताएं! 👇\n\n#quiz #education #sciencegk"
     
     yt_tags = seo_data.get("tags", ["science gk", "general science", "quiz in hindi", "education"])
-    # Tags limit fix (YouTube API maximum takes ~500 chars total for tags)
     yt_tags = yt_tags[:15] 
     
-    print(f"📌 Upload Title: {yt_title}")
-    print(f"📌 Upload Tags: {yt_tags}")
+    print(f"📌 Upload Title: {yt_title}", flush=True)
+    print(f"📌 Upload Tags: {yt_tags}", flush=True)
 
     request_body = {
         "snippet": {"title": yt_title, "description": yt_desc, "tags": yt_tags, "categoryId": "27"},
@@ -399,22 +394,20 @@ def upload_to_youtube(video_file, total_q, seo_data):
             media = MediaFileUpload(video_file, chunksize=-1, resumable=True)
             request = youtube.videos().insert(part="snippet,status", body=request_body, media_body=media)
             response = request.execute()
-            print(f"✅ तहलका! वीडियो LIVE: https://youtu.be/{response['id']}")
+            print(f"✅ तहलका! वीडियो LIVE: https://youtu.be/{response['id']}", flush=True)
             return True
         except Exception as e:
-            print(f"❌ अपलोड एरर: {e}")
+            print(f"❌ अपलोड एरर: {e}", flush=True)
             continue
     return False
 
 async def main():
-    wait_time = random.randint(300, 1800) 
-    print(f"🤖 Anti-Bot: वीडियो बनाने से पहले {wait_time // 60} मिनट इंतज़ार कर रहा है...")
-    time.sleep(wait_time) 
+    print("🚀 स्क्रिप्ट शुरू हो गई है, बिना किसी इंतज़ार के!", flush=True)
     
     quizzes, seo_data = await prepare_content()
     
     if not quizzes:
-        print("❌ कोई सवाल जेनरेट नहीं हुआ, प्रोसेस बंद की जा रही है।")
+        print("❌ कोई सवाल जेनरेट नहीं हुआ, प्रोसेस बंद की जा रही है।", flush=True)
         return
 
     total_q = len(quizzes)
