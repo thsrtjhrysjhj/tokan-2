@@ -31,24 +31,14 @@ jobs:
     - name: Install Python Libraries
       run: |
         pip install --upgrade pip
-        pip install moviepy==1.0.3 edge-tts gtts numpy google-api-python-client google-auth-httplib2 google-auth-oauthlib Pillow==9.5.0 imageio-ffmpeg
+        pip install moviepy==1.0.3 edge-tts gtts numpy google-api-python-client google-auth-httplib2 google-auth-oauthlib Pillow==9.5.0 imageio-ffmpeg google-generativeai
 
-    - name: Load YouTube Tokens
+    - name: Load YouTube Tokens & Run Bot
       env:
         TOKEN_1: ${{ secrets.TOKEN_1 }}
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }} # यहाँ से API Key जाएगी
       run: |
         mkdir -p tokens
         if [ ! -z "$TOKEN_1" ]; then echo "$TOKEN_1" | base64 -d > tokens/token1.json; fi
         echo "✅ Tokens लोड हो गए हैं!"
-
-    - name: Run Auto-Bot
-      run: |
         python bot.py
-
-    - name: Commit updated questions.json
-      run: |
-        git config --global user.name "github-actions[bot]"
-        git config --global user.email "github-actions[bot]@users.noreply.github.com"
-        git add questions.json
-        git commit -m "🤖 सवाल यूज़ किए गए और JSON अपडेट किया गया" || echo "No changes to commit"
-        git push
